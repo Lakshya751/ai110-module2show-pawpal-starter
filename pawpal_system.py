@@ -24,10 +24,11 @@ class Task:
 
     def mark_complete(self) -> None:
         """Mark this task as completed."""
-        raise NotImplementedError
+        self.completed = True
 
     def next_occurrence(self) -> Optional["Task"]:
         """Return the next Task for a recurring task, or None if not recurring."""
+        # Implemented in Phase 4 (recurring tasks).
         raise NotImplementedError
 
 
@@ -41,7 +42,7 @@ class Pet:
 
     def add_task(self, task: Task) -> None:
         """Attach a task to this pet."""
-        raise NotImplementedError
+        self.tasks.append(task)
 
 
 @dataclass
@@ -53,11 +54,11 @@ class Owner:
 
     def add_pet(self, pet: Pet) -> None:
         """Add a pet under this owner."""
-        raise NotImplementedError
+        self.pets.append(pet)
 
     def all_tasks(self) -> List[tuple]:
         """Return every (pet, task) pair across all of this owner's pets."""
-        raise NotImplementedError
+        return [(pet, task) for pet in self.pets for task in pet.tasks]
 
 
 class Scheduler:
@@ -68,7 +69,7 @@ class Scheduler:
 
     def all_tasks(self) -> List[tuple]:
         """Return every (pet, task) pair for the owner."""
-        raise NotImplementedError
+        return self.owner.all_tasks()
 
     def sort_by_time(self) -> List[tuple]:
         """Return (pet, task) pairs sorted chronologically by task time."""
@@ -91,5 +92,16 @@ class Scheduler:
         raise NotImplementedError
 
     def todays_schedule(self) -> str:
-        """Return a readable, time-sorted summary of today's tasks."""
-        raise NotImplementedError
+        """Return a readable summary of today's tasks (upgraded in Phase 4)."""
+        pairs = self.all_tasks()
+        if not pairs:
+            return "Today's Schedule:\n  (no tasks yet)"
+
+        lines = ["Today's Schedule:"]
+        for pet, task in pairs:
+            status = "done" if task.completed else "todo"
+            lines.append(
+                f"  {task.time}  {task.description} "
+                f"({pet.name}) [{task.frequency}] [{status}]"
+            )
+        return "\n".join(lines)
