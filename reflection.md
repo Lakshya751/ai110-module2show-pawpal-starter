@@ -46,8 +46,16 @@ in one place.
 
 **b. Tradeoffs**
 
-- Describe one tradeoff your scheduler makes.
-- Why is that tradeoff reasonable for this scenario?
+`Scheduler.detect_conflicts()` only flags tasks that share the **exact same start
+time** ("HH:MM"). It does not consider task duration or overlapping windows — two
+tasks at 08:00 and 08:15 are treated as non-conflicting even if the first "takes"
+30 minutes.
+
+This is reasonable for PawPal+ because the model has no duration field: tasks are
+points in time, not intervals. Exact-match detection is simple, fast, and predictable,
+and it catches the most common real mistake (double-booking the same slot). Adding
+true overlap detection would require a duration attribute and interval math — worth it
+later, but unnecessary complexity for the current point-in-time model.
 
 ---
 

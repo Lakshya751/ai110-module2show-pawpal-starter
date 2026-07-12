@@ -28,8 +28,20 @@ class Task:
 
     def next_occurrence(self) -> Optional["Task"]:
         """Return the next Task for a recurring task, or None if not recurring."""
-        # Implemented in Phase 4 (recurring tasks).
-        raise NotImplementedError
+        if self.frequency == "daily":
+            delta = timedelta(days=1)
+        elif self.frequency == "weekly":
+            delta = timedelta(weeks=1)
+        else:
+            return None
+        base = self.due_date or date.today()
+        return Task(
+            description=self.description,
+            time=self.time,
+            frequency=self.frequency,
+            completed=False,
+            due_date=base + delta,
+        )
 
 
 @dataclass
@@ -72,28 +84,58 @@ class Scheduler:
         return self.owner.all_tasks()
 
     def sort_by_time(self) -> List[tuple]:
-        """Return (pet, task) pairs sorted chronologically by task time."""
-        raise NotImplementedError
+        """Return (pet, task) pairs sorted chronologically by task time.
+
+        Times are zero-padded "HH:MM" strings, so a plain string sort is already
+        chronological (e.g. "08:00" < "09:30" < "18:00").
+        """
+        return sorted(self.all_tasks(), key=lambda pair: pair[1].time)
 
     def filter_by_status(self, completed: bool) -> List[tuple]:
         """Return (pet, task) pairs matching the given completion status."""
-        raise NotImplementedError
+        return [(pet, task) for pet, task in self.all_tasks() if task.completed == completed]
 
     def filter_by_pet(self, pet_name: str) -> List[tuple]:
         """Return (pet, task) pairs belonging to the named pet."""
-        raise NotImplementedError
+        return [(pet, task) for pet, task in self.all_tasks() if pet.name == pet_name]
 
     def mark_task_complete(self, task: Task) -> Optional[Task]:
-        """Mark a task complete; create/attach its next occurrence if recurring."""
-        raise NotImplementedError
+        """Mark a task complete; if recurring, create and attach its next occurrence.
+
+        Returns the newly created next-occurrence Task, or None for one-off tasks.
+        """
+        task.mark_complete()
+        next_task = task.next_occurrence()
+        if next_task is None:
+            return None
+        # Attach the new occurrence to whichever pet owns the completed task.
+        for pet in self.owner.pets:
+            if task in pet.tasks:
+                pet.add_task(next_task)
+                break
+        return next_task
 
     def detect_conflicts(self) -> List[str]:
-        """Return warning strings for tasks scheduled at the same time."""
-        raise NotImplementedError
+        """Return warning strings for tasks scheduled at the same time.
+
+        Lightweight strategy: group tasks by their exact "HH:MM" time and warn about
+        any time slot that holds two or more tasks. Returns messages rather than
+        raising, so callers can display them without crashing.
+        """
+        by_time: dict = {}
+        for pet, task in self.all_tasks():
+            by_time.setdefault(task.time, []).append(f"{task.description} ({pet.name})")
+
+        warnings = []
+        for time in sorted(by_time):
+            entries = by_time[time]
+            if len(entries) > 1:
+                warnings.append(f"Conflict at {time}: " + ", ".join(entries))
+        return warnings
 
     def todays_schedule(self) -> str:
-        """Return a readable summary of today's tasks (upgraded in Phase 4)."""
-        pairs = self.all_tasks()
+        """Return a readable, time-sorted summary of today's tasks plus conflicts."""
+        pairs = self.sort_by_time()
         if not pairs:
             return "Today's Schedule:\n  (no tasks yet)"
 
@@ -104,4 +146,12 @@ class Scheduler:
                 f"  {task.time}  {task.description} "
                 f"({pet.name}) [{task.frequency}] [{status}]"
             )
+
+        conflicts = self.detect_conflicts()
+        if conflicts:
+            lines.append("")
+            lines.append("⚠️  Conflicts:")
+            for warning in conflicts:
+                lines.append(f"  - {warning}")
+
         return "\n".join(lines)
