@@ -57,19 +57,41 @@ Today's Schedule:
 
 ## 🧪 Testing PawPal+
 
+Run the suite from the project root:
+
 ```bash
-# Run the full test suite:
-pytest
-
-# Run with coverage:
-pytest --cov
+python -m pytest
 ```
 
-Sample test output:
+The tests in `tests/test_pawpal.py` cover:
+
+- **Core behavior** — `mark_complete()` flips status; adding a task grows a pet's
+  task list; `Owner.all_tasks()` spans every pet.
+- **Sorting** — `sort_by_time()` returns tasks chronologically regardless of insertion order.
+- **Filtering** — by pet name and by completion status.
+- **Recurrence** — completing a daily task creates a next-day occurrence attached to the
+  same pet; weekly recurs 7 days out; one-off tasks do not recur.
+- **Conflict detection** — two tasks at the same time (even across pets) produce a warning; distinct times do not.
+- **Edge cases** — a pet with no tasks yields an empty, error-free schedule.
+
+Sample run:
 
 ```
-# Paste your pytest output here
+============================= test session starts ==============================
+platform darwin -- Python 3.9.6, pytest-8.4.2, pluggy-1.6.0
+configfile: pytest.ini
+testpaths: tests
+collected 12 items
+
+tests/test_pawpal.py ............                                        [100%]
+
+============================== 12 passed in 0.02s ==============================
 ```
+
+**Confidence level: ★★★★☆ (4/5).** The core logic, sorting, filtering, recurrence, and
+exact-time conflict detection are all exercised by passing tests. Docking one star
+because conflict detection only checks exact time matches (not overlapping durations),
+which is an accepted tradeoff documented in `reflection.md`.
 
 ## 📐 Smarter Scheduling
 
