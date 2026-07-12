@@ -1,0 +1,41 @@
+classDiagram
+    %% PawPal+ working design (Phase 1 draft). Revisited and finalized in Phase 6.
+
+    class Task {
+        +str description
+        +str time
+        +str frequency
+        +bool completed
+        +date due_date
+        +mark_complete() void
+        +next_occurrence() Task
+    }
+
+    class Pet {
+        +str name
+        +str species
+        +list~Task~ tasks
+        +add_task(task Task) void
+    }
+
+    class Owner {
+        +str name
+        +list~Pet~ pets
+        +add_pet(pet Pet) void
+        +all_tasks() list
+    }
+
+    class Scheduler {
+        +Owner owner
+        +all_tasks() list
+        +sort_by_time() list
+        +filter_by_status(completed bool) list
+        +filter_by_pet(pet_name str) list
+        +mark_task_complete(task Task) Task
+        +detect_conflicts() list~str~
+        +todays_schedule() str
+    }
+
+    Owner "1" o-- "*" Pet : owns
+    Pet "1" o-- "*" Task : has
+    Scheduler ..> Owner : reads pets and tasks
