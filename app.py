@@ -66,7 +66,26 @@ st.divider()
 # --- Today's schedule -------------------------------------------------------
 st.subheader("🗓️ Today's schedule")
 scheduler = Scheduler(owner)
-pairs = scheduler.all_tasks()
+
+# Conflict warnings surface at the top so the owner sees double-bookings first.
+for warning in scheduler.detect_conflicts():
+    st.warning(f"⚠️ {warning}")
+
+# Filters use the Scheduler's methods; default view is time-sorted.
+col_a, col_b = st.columns(2)
+with col_a:
+    pet_filter = st.selectbox("Filter by pet", ["All pets"] + [p.name for p in owner.pets])
+with col_b:
+    status_filter = st.selectbox("Filter by status", ["All", "Outstanding", "Done"])
+
+pairs = scheduler.sort_by_time()
+if pet_filter != "All pets":
+    pairs = [pr for pr in pairs if pr[0].name == pet_filter]
+if status_filter == "Outstanding":
+    pairs = [pr for pr in pairs if not pr[1].completed]
+elif status_filter == "Done":
+    pairs = [pr for pr in pairs if pr[1].completed]
+
 if pairs:
     st.table(
         [
@@ -75,10 +94,10 @@ if pairs:
                 "Task": task.description,
                 "Pet": pet.name,
                 "Frequency": task.frequency,
-                "Status": "done" if task.completed else "todo",
+                "Status": "✅ done" if task.completed else "⏳ todo",
             }
             for pet, task in pairs
         ]
     )
 else:
-    st.info("No tasks scheduled yet.")
+    st.info("No tasks match the current filters.")

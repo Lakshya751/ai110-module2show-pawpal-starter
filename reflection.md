@@ -32,8 +32,17 @@ in one place.
 
 **b. Design changes**
 
-- Did your design change during implementation?
-- If yes, describe at least one change and why you made it.
+Yes. The biggest change was replacing an earlier "time-budget planner" design (where the
+owner had a fixed number of available minutes and tasks were packed by priority) with the
+current **multi-pet task manager**. The budget model didn't fit the real scenario — a pet
+owner thinks in terms of "which pet, what task, at what time," not "how many minutes do I
+have." Restructuring so `Owner` owns `Pet`s and each `Pet` owns its `Task`s made the
+relationships natural and unlocked per-pet filtering and cross-pet conflict detection.
+
+A smaller change: I moved recurrence so that `Task.next_occurrence()` builds the new task
+but `Scheduler.mark_task_complete()` is what attaches it to the right pet. That kept `Task`
+free of any knowledge about pets while still making completion "automatically" schedule the
+next occurrence.
 
 ---
 
@@ -41,8 +50,12 @@ in one place.
 
 **a. Constraints and priorities**
 
-- What constraints does your scheduler consider (for example: time, priority, preferences)?
-- How did you decide which constraints mattered most?
+The scheduler considers **time of day** (to order the plan and to detect conflicts) and
+**completion status** and **pet ownership** (to filter). Time mattered most because a daily
+plan is fundamentally "what happens when," and the most useful safety check for an owner is
+"have I accidentally booked two things at once." I deliberately left out a duration/priority
+constraint to keep the model a set of point-in-time events rather than intervals — simpler,
+and enough for the core scenario.
 
 **b. Tradeoffs**
 
@@ -63,13 +76,37 @@ later, but unnecessary complexity for the current point-in-time model.
 
 **a. How you used AI**
 
-- How did you use AI tools during this project (for example: design brainstorming, debugging, refactoring)?
-- What kinds of prompts or questions were most helpful?
+I used my AI coding assistant across the whole workflow: brainstorming the class
+breakdown, generating the Mermaid UML, scaffolding dataclass skeletons, implementing the
+algorithmic methods, and drafting the test suite. The most helpful prompts were **specific
+and grounded in my files** — e.g. "based on my skeletons, how should the Scheduler retrieve
+all tasks from the Owner's pets?" and "give me a lightweight conflict-detection strategy
+that returns a warning instead of crashing." Open-ended prompts produced generic code;
+prompts referencing my actual class names produced code I could drop in.
 
 **b. Judgment and verification**
 
-- Describe one moment where you did not accept an AI suggestion as-is.
-- How did you evaluate or verify what the AI suggested?
+I rejected the original **time-budget scheduler** design even though it was clean and fully
+tested, because it didn't match how a pet owner actually plans a day. That was a
+human-architecture call the AI wouldn't make on its own. I verified every AI suggestion by
+running `python main.py` (to eyeball real behavior) and `python -m pytest` (to confirm the
+contracts held) — for example, I only trusted the recurrence logic once a test showed the
+next occurrence was uncompleted, dated one day later, and attached to the same pet.
+
+### AI Strategy (Phase 6)
+
+- **Most effective features:** inline chat grounded in attached files (for targeted method
+  implementations) and agent-style multi-file edits (for the recurrence change that touched
+  both `Task` and `Scheduler`).
+- **A suggestion I modified:** an early version put recurrence entirely inside `Task`, which
+  forced `Task` to know about pets. I moved the "attach the next occurrence" step up into
+  `Scheduler.mark_task_complete()` to keep the data classes ignorant of ownership.
+- **Separate chat sessions per phase** kept design discussion from bleeding into testing
+  discussion — the testing chat stayed focused on edge cases instead of re-litigating the
+  data model.
+- **Lead-architect takeaway:** the AI is fastest at producing plausible code, but I had to
+  own the decisions about *what* to build and *why*. My job was choosing the design,
+  verifying behavior, and rejecting suggestions that were clean but wrong for the scenario.
 
 ---
 
@@ -77,13 +114,19 @@ later, but unnecessary complexity for the current point-in-time model.
 
 **a. What you tested**
 
-- What behaviors did you test?
-- Why were these tests important?
+Twelve tests in `tests/test_pawpal.py` cover: marking tasks complete, adding tasks to
+pets, `Owner.all_tasks()` spanning multiple pets, chronological sorting, filtering by pet
+and by status, daily/weekly recurrence (and that one-off tasks don't recur), conflict
+detection on same-time tasks, and an empty-schedule edge case. These matter because they
+lock in the exact behaviors the UI and CLI depend on — especially recurrence and conflict
+detection, which have the most moving parts.
 
 **b. Confidence**
 
-- How confident are you that your scheduler works correctly?
-- What edge cases would you test next if you had more time?
+Fairly confident (4/5) — every core behavior and algorithm is covered by a passing test,
+and the CLI demo exercises them end-to-end. With more time I'd test overlapping-duration
+conflicts (once a duration field exists), tasks spanning midnight, and invalid time strings
+like "8am" or "" to make parsing robust.
 
 ---
 
@@ -91,12 +134,21 @@ later, but unnecessary complexity for the current point-in-time model.
 
 **a. What went well**
 
-- What part of this project are you most satisfied with?
+The clean separation between the data classes and the `Scheduler` "brain." Because all the
+logic lives in one place, both the CLI (`main.py`) and the Streamlit UI (`app.py`) share the
+exact same behavior with no duplicated logic — the UI is genuinely just a thin presentation
+layer.
 
 **b. What you would improve**
 
-- If you had another iteration, what would you improve or redesign?
+I'd add a `duration` to `Task` and upgrade conflict detection from exact-time matching to
+true interval overlap, plus data persistence (save/load to JSON) so pets and tasks survive
+between runs. I'd also validate the `HH:MM` time input at the boundary instead of trusting it.
 
 **c. Key takeaway**
 
-- What is one important thing you learned about designing systems or working with AI on this project?
+Designing the relationships first (Owner → Pet → Task) made everything downstream easier —
+sorting, filtering, and conflict detection all fell out naturally once the data model was
+right. And working with AI, the leverage came from being a decisive architect: the AI writes
+code quickly, but the quality of the result depended on me choosing the right design and
+verifying behavior rather than accepting the first plausible answer.

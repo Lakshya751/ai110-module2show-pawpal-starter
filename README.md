@@ -105,14 +105,65 @@ core data model:
 | Conflict detection | `Scheduler.detect_conflicts()` | Groups tasks by exact time and returns a warning string for any slot with 2+ tasks (returns messages, never raises). |
 | Recurring tasks | `Task.next_occurrence()`, `Scheduler.mark_task_complete(task)` | Completing a `daily`/`weekly` task spawns the next occurrence via `timedelta` and attaches it to the same pet. |
 
+## ✨ Features
+
+- **Multi-pet task management** — one `Owner` manages many `Pet`s, each with its own tasks.
+- **Task attributes** — description, time (`HH:MM`), frequency (once/daily/weekly), and completion status.
+- **Sorting by time** — `Scheduler.sort_by_time()` shows the day chronologically.
+- **Filtering** — by pet (`filter_by_pet`) or by completion status (`filter_by_status`).
+- **Daily/weekly recurrence** — completing a recurring task auto-creates its next occurrence.
+- **Conflict warnings** — `detect_conflicts()` flags tasks booked at the same time.
+
 ## 📸 Demo Walkthrough
 
-Describe your app in numbered steps so a reader can follow along without watching a video:
+**Main UI features (`app.py`)** — the Streamlit app lets a user:
+- Set the owner name.
+- Add a pet (name + species).
+- Schedule a task for any pet (description, time, frequency).
+- View today's schedule as a table, sorted by time, with per-pet and per-status filters.
+- See conflict warnings surfaced at the top when two tasks share a time.
 
-1. <!-- Describe this step -->
-2. <!-- Describe this step -->
-3. <!-- Describe this step -->
-4. <!-- Describe this step -->
-5. <!-- Add more steps as needed -->
+**Example workflow:**
+
+1. Open the app (`streamlit run app.py`) — an `Owner` is created and kept in
+   `st.session_state` so data survives page reruns.
+2. Under **Add a pet**, add `Biscuit` (dog). It appears in "Current pets".
+3. Under **Schedule a task**, add `Morning walk` at `08:00`, frequency `daily`.
+4. Add a second pet `Mochi` (cat) and a task `Morning cuddle` at `08:00`.
+5. In **Today's schedule**, the tasks appear sorted by time, and a ⚠️ warning flags the
+   08:00 conflict between Biscuit and Mochi.
+6. Use the **Filter by pet / status** dropdowns to narrow the view.
+
+**Key `Scheduler` behaviors shown:** chronological sorting, exact-time conflict warnings,
+pet/status filtering, and (via the CLI) daily/weekly recurrence.
+
+**Sample CLI output (`python main.py`):**
+
+```
+Owner: Jordan — 2 pets
+
+Today's Schedule:
+  08:00  Morning walk (Biscuit) [daily] [todo]
+  08:00  Morning cuddle (Mochi) [weekly] [todo]
+  09:30  Refill water (Mochi) [daily] [todo]
+  18:00  Dinner (Biscuit) [daily] [todo]
+
+⚠️  Conflicts:
+  - Conflict at 08:00: Morning walk (Biscuit), Morning cuddle (Mochi)
+
+Biscuit's tasks only:
+  18:00  Dinner
+  08:00  Morning walk
+
+After completing Biscuit's daily 'Morning walk':
+  completed flag: True
+  next occurrence due: 2026-07-13 at 08:00
+
+Outstanding (not completed) tasks:
+  18:00  Dinner (Biscuit)
+  08:00  Morning walk (Biscuit)
+  09:30  Refill water (Mochi)
+  08:00  Morning cuddle (Mochi)
+```
 
 
